@@ -1,46 +1,4 @@
-
-
-const chromosomeToIndex = {
-    "chrI": 0,
-    "chrII": 1,
-    "chrIII": 2,
-    "chrIV": 3,
-    "chrV": 4,
-    "chrVI": 5,
-    "chrVII": 6,
-    "chrVIII": 7,
-    "chrIX": 8,
-    "chrX": 9,
-    "chrXI": 10,
-    "chrXII": 11,
-    "chrXIII": 12,
-    "chrXIV": 13,
-    "chrXV": 14,
-    "chrXVI": 15,
-    "chrmt": 16
-}
-
-const primer_test_genome1_tsv = `Name	Length
-chrI	230218
-chrII	813184
-chrIII	316620
-chrIV	1531933
-chrV	576874
-chrVI	270161
-chrVII	1090940
-chrVIII	562643
-chrIX	439888
-chrX	745751
-chrXI	666816
-chrXII	1078177
-chrXIII	924431
-chrXIV	784333
-chrXV	1091291
-chrXVI	948066
-chrmt	85779
-`;
-
-const primer_test_paralogs_G1_tsv = `geneId	chromosome	geneStart	geneEnd	paralogId	paralogChr	paralogStart	paralogEnd
+geneId	chromosome	geneStart	geneEnd	paralogId	paralogChr	paralogStart	paralogEnd
 YAL068C	chrI	1807	2169	YBR301W	chrII	809057	809419
 YAL068C	chrI	1807	2169	YDR542W	chrIV	1523249	1523611
 YAL068C	chrI	1807	2169	YEL049W	chrV	63728	64090
@@ -4017,4 +3975,3 @@ Q0120	chrmt	36540	42251	Q0115	chrmt	36540	40265
 Q0105	chrmt	36540	43647	Q0110	chrmt	36540	38579
 Q0105	chrmt	36540	43647	Q0115	chrmt	36540	40265
 Q0105	chrmt	36540	43647	Q0120	chrmt	36540	42251
-`;

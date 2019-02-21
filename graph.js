@@ -18,7 +18,7 @@ const chord = d3.chord()
 
 const pie = d3.pie()
     .sort(null)
-    .value(d => d.number);
+    .value(d => d.Length);
 
 const arc = d3.arc()
     .innerRadius(dims.innerRadius)
@@ -46,24 +46,18 @@ const colour = d3.scaleOrdinal([
 
 const kiloFormat = d3.formatPrefix(',.0', 1e3);
 
-const update = data => {
+const update = () => {
 
     // Link data
-    const chordData = chord(data);
-    const chordGroupData = pie(PrimerTestGenome1);
+    const genomeData = tsvToObject(primer_test_genome1_tsv);
+    const chordGroupData = pie(genomeData);
     let chordTicks = [];
-    pie(PrimerTestGenome1).map(item => createTicks(item, 400000)).forEach(item => {
+    chordGroupData.map(item => createTicks(item, 400000)).forEach(item => {
         chordTicks = [...chordTicks, ...item];
     });
 
-    console.log(chordData);
-    console.log(customChords);
-    console.log(chordGroupData);
-    console.log(PrimerTestGenome1);
-    console.log(pie(PrimerTestGenome1));
-
-    const ribbons = graph.selectAll('.ribbon').data(createParalogChords(ParalogsGenome1, chordGroupData));
-    const arcs = graph.selectAll('.arc').data(pie(PrimerTestGenome1));
+    const ribbons = graph.selectAll('.ribbon').data(createParalogChords(tsvToObject(primer_test_paralogs_G1_tsv), chordGroupData));
+    const arcs = graph.selectAll('.arc').data(chordGroupData);
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
 
     // Update scales domains
@@ -163,10 +157,10 @@ const createParalogChords = (paralogs, chromosomes) => paralogs.map((paralog) =>
     sourceChromosomeEndAngle = chromosomes[sourceIndex].endAngle - dims.ribbonPadAngle;
     targetChromosomeStartAngle = chromosomes[targetIndex].startAngle + dims.ribbonPadAngle;
     targetChromosomeEndAngle = chromosomes[targetIndex].endAngle - dims.ribbonPadAngle;
-    sourceRibbonStartAngle = paralog.geneStart / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle-sourceChromosomeStartAngle)+sourceChromosomeStartAngle;
-    sourceRibbonEndAngle = paralog.geneEnd / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle-sourceChromosomeStartAngle)+sourceChromosomeStartAngle;
-    targetRibbonStartAngle = paralog.paralogStart / chromosomes[targetIndex].value * (targetChromosomeEndAngle-targetChromosomeStartAngle)+targetChromosomeStartAngle;
-    targetRibbonEndAngle = paralog.paralogEnd / chromosomes[targetIndex].value * (targetChromosomeEndAngle-targetChromosomeStartAngle)+targetChromosomeStartAngle;
+    sourceRibbonStartAngle = paralog.geneStart / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
+    sourceRibbonEndAngle = paralog.geneEnd / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
+    targetRibbonStartAngle = paralog.paralogStart / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
+    targetRibbonEndAngle = paralog.paralogEnd / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
     return {
         source: { index: sourceIndex, subIndex: targetIndex, startAngle: sourceRibbonStartAngle, endAngle: sourceRibbonEndAngle },
         target: { index: targetIndex, subIndex: sourceIndex, startAngle: targetRibbonStartAngle, endAngle: targetRibbonEndAngle }
@@ -184,4 +178,21 @@ const setOpacity = (elements, opacity) => {
         .style('opacity', opacity);
 }
 
-update(matrix);
+const tsvToObject = (tsv) => {
+    const lines = tsv.split("\n");
+    const headers = lines.shift().split("\t");
+    if (!lines[lines.length]) {
+        lines.pop();
+    }
+    return lines.map((line) => {
+        const object = {};
+        headers.map((header, index) => {
+            objectData = line.split("\t")[index];
+            object[header] = parseInt(objectData) ? parseInt(objectData) : objectData;
+        });
+        return object;
+    });
+}
+
+console.log(tsvToObject(primer_test_paralogs_G1_tsv));
+update();
