@@ -1,4 +1,4 @@
-const dims = { height: 700, width: 700, innerRadius: 270, outerRadius: 290, padAngle: 0.02, ticksPadAngle: 0.014, ribbonPadAngle: 0.015, opacity: 0.7, fadedOpacity: 0.2, focusOpacity: 0.9 };
+const dims = { height: 700, width: 700, innerRadius: 270, outerRadius: 290, padAngle: 0.02, ticksPadAngle: 0.014, ribbonPadAngle: 0.015, opacity: 0.7, fadedOpacity: 0.01, focusOpacity: 0.9 };
 const cent = { x: (dims.width / 2 + 5), y: (dims.height / 2 + 5) }
 
 const svg = d3.selectAll('.canvas')
