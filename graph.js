@@ -29,10 +29,10 @@ const ribbon = d3.ribbon()
     .radius(dims.innerRadius);
 
 const colour = d3.scaleOrdinal([
-    /** '#66c2a5',
+    '#66c2a5',
     '#fc8d62',
     '#8da0cb',
-    '#e78ac3' */
+    '#e78ac3',
     '#8dd3c7',
     '#ffffb3',
     '#bebada',
@@ -112,33 +112,44 @@ const update = () => {
         .text(d => kiloFormat(d.value))
 
     // Animations
-    graph.selectAll('.ribbon')
+    ribbonsAnimation = graph.selectAll('.ribbon');
+    arcsAnimation = graph.selectAll('.arc');
+
+    ribbonsAnimation
         .on('mouseover', (d, i, n) => {
-            setOpacity(graph.selectAll('.arc,.ribbon'), dims.fadedOpacity);
-            setOpacity(graph.selectAll('.arc').filter(arc => arc.index === d.target.index || arc.index === d.source.index), dims.focusOpacity);
+            setOpacity(arcsAnimation, dims.fadedOpacity);
+            setOpacity(ribbonsAnimation, dims.fadedOpacity);
+            setOpacity(arcsAnimation.filter(arc => arc.index === d.target.index || arc.index === d.source.index), dims.focusOpacity);
             setOpacity(d3.select(n[i]), dims.focusOpacity);
         })
         .on('mouseleave', (d, i, n) => {
-            setOpacity(graph.selectAll('.arc,.ribbon'), dims.opacity);
+            setOpacity(arcsAnimation, dims.opacity);
+            setOpacity(ribbonsAnimation, dims.opacity);
         });
 
-    graph.selectAll('.arc')
+    arcsAnimation
         .on('mouseover', (d, i, n) => {
-            setOpacity(graph.selectAll('.arc,.ribbon'), dims.fadedOpacity);
-            let arcIndexesToFocus = [];
-            setOpacity(graph.selectAll('.ribbon')
+            setOpacity(arcsAnimation, dims.fadedOpacity);
+            setOpacity(ribbonsAnimation, dims.fadedOpacity);
+            arcsToFocus = {};
+            setOpacity(ribbonsAnimation
                 .filter(ribbon => {
                     if (ribbon.source.index === d.index || ribbon.target.index === d.index) {
-                        focus(d3.select(n[ribbon.source.index]));
-                        focus(d3.select(n[ribbon.target.index]))
+                        if (!(ribbon.source.index in arcsToFocus)) {
+                            arcsToFocus[ribbon.source.index] = n[ribbon.source.index];
+                        }
+                        if (!(ribbon.target.index in arcsToFocus)) {
+                            arcsToFocus[ribbon.target.index] = n[ribbon.target.index];
+                        }
                         return true;
                     }
                     return false;
                 }), dims.focusOpacity);
-            arcIndexesToFocus.forEach(index => setOpacity(d3.select(n[index]), dims.focusOpacity));
+            setOpacity(d3.selectAll(Object.values(arcsToFocus)), dims.focusOpacity);
         })
-        .on('mouseleave', (d, i, n) => {
-            setOpacity(graph.selectAll('.arc,.ribbon'), dims.opacity);
+        .on('mouseleave', () => {
+            setOpacity(arcsAnimation, dims.opacity);
+            setOpacity(ribbonsAnimation, dims.opacity);
         })
 };
 
@@ -167,32 +178,9 @@ const createParalogChords = (paralogs, chromosomes) => paralogs.map((paralog) =>
     };
 });
 
-const fade = (elements) => setOpacity(elements, dims.fadedOpacity);
-
-const focus = (elements) => setOpacity(elements, dims.focusOpacity);
-
-const normalOpacity = (elements) => setOpacity(elements, dims.opacity);
-
 const setOpacity = (elements, opacity) => {
-    elements.transition().duration(50)
-        .style('opacity', opacity);
+    console.log(elements);
+    elements.style('opacity', opacity);
 }
 
-const tsvToObject = (tsv) => {
-    const lines = tsv.split("\n");
-    const headers = lines.shift().split("\t");
-    if (!lines[lines.length]) {
-        lines.pop();
-    }
-    return lines.map((line) => {
-        const object = {};
-        headers.map((header, index) => {
-            objectData = line.split("\t")[index];
-            object[header] = parseInt(objectData) ? parseInt(objectData) : objectData;
-        });
-        return object;
-    });
-}
-
-console.log(tsvToObject(primer_test_paralogs_G1_tsv));
 update();
