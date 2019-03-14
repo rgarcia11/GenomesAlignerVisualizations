@@ -1,5 +1,22 @@
-const dims = { height: 700, width: 700, innerRadius: 270, outerRadius: 290, padAngle: 0.02, ticksPadAngle: 0.014, ribbonPadAngle: 0.015, opacity: 0.7, fadedOpacity: 0.01, focusOpacity: 0.9 };
-const cent = { x: (dims.width / 2 + 5), y: (dims.height / 2 + 5) }
+const dims = {
+    height: 900,
+    width: 900,
+    innerRadius: 270,
+    outerRadius: 290,
+    padAngle: 0.02,
+    ticksPadAngle: 0.014,
+    ribbonPadAngle: 0.015,
+    opacity: 0.7,
+    fadedOpacity: 0.01,
+    focusOpacity: 0.9
+};
+
+const cent = {
+    x: (dims.width / 2 + 5),
+    y: (dims.height / 2 + 5)
+}
+
+const minimumChromosomeLength = 100000;
 
 const svg = d3.selectAll('.canvas')
     .append('svg')
@@ -10,6 +27,10 @@ const graph = svg.append('g')
     .attr('transform', `translate(${cent.x}, ${cent.y})`);
 
 const circularAxisGroup = graph.append('g').attr('class', 'axis');
+
+const arcsGroup = graph.append('g').attr('class', 'chromosomeArcs');
+
+const ribbonsGroup = graph.append('g').attr('class', 'ribbons');
 
 const chord = d3.chord()
     .padAngle(dims.padAngle)
@@ -34,7 +55,6 @@ const colour = d3.scaleOrdinal([
     '#8da0cb',
     '#e78ac3',
     '#8dd3c7',
-    '#ffffb3',
     '#bebada',
     '#fb8072',
     '#80b1d3',
@@ -46,18 +66,19 @@ const colour = d3.scaleOrdinal([
 
 const kiloFormat = d3.formatPrefix(',.0', 1e3);
 
-const update = () => {
+const update = (genomeData, paralogsData) => {
+    genomeData = genomeData.filter(chromosome => {
+        return chromosome.Length > minimumChromosomeLength;
+    });
 
-    // Link data
-    const genomeData = tsvToObject(primer_test_genome1_tsv);
     const chordGroupData = pie(genomeData);
     let chordTicks = [];
     chordGroupData.map(item => createTicks(item, 400000)).forEach(item => {
         chordTicks = [...chordTicks, ...item];
     });
 
-    const ribbons = graph.selectAll('.ribbon').data(createParalogChords(tsvToObject(primer_test_paralogs_G1_tsv), chordGroupData));
-    const arcs = graph.selectAll('.arc').data(chordGroupData);
+    const ribbons = ribbonsGroup.selectAll('.ribbon').data(createParalogChords(paralogsData, chordGroupData));
+    const arcs = arcsGroup.selectAll('.arc').data(chordGroupData);
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
 
     // Update scales domains
@@ -72,14 +93,34 @@ const update = () => {
     arcs.remove();
 
     // Enter selection
-    arcs.enter()
+    const arcsToDraw = arcs.enter()
+
+    arcsToDraw
         .append('g')
         .append('path')
         .attr('fill', d => colour(d.index))
         .attr('stroke', d => d3.color(colour(d.index)).darker(1))
         .style('opacity', dims.opacity)
         .attr('class', 'arc')
-        .attr('d', arc);
+        .attr('id', (d, i) => `arc${i}`)
+        .attr('d', arc)
+
+    const chromosomeLabels = arcsToDraw
+        .append('g')
+        .each(d => { d.angle = ((d.startAngle + d.endAngle) / 2) })
+        .attr("class", "outer-labels")
+        .attr("text-anchor", d => d.angle > Math.PI ? "end" : null)
+        .attr("transform", function (d, i) {
+            const c = arc.innerRadius(dims.innerRadius + 120).centroid(d);
+            return `translate(${c[0]}, ${c[1]}) rotate(${d.angle * 180 / Math.PI - 90}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`;
+        })
+        .attr('fill', d => colour(d.index))
+        .style('width', 20)
+
+    chromosomeLabels.append("text")
+        .attr("class", "outer-label")
+        .attr("dy", ".35em")
+        .text(d => d.data.Name);
 
     ribbons.enter()
         .append('g')
@@ -111,20 +152,27 @@ const update = () => {
         .attr('text-anchor', d => d.angle > Math.PI ? 'end' : null)
         .text(d => kiloFormat(d.value))
 
+
     // Animations
+
     ribbonsAnimation = graph.selectAll('.ribbon');
+    ribbonsGroupAnimation = graph.selectAll('.ribbons');
     arcsAnimation = graph.selectAll('.arc');
 
     ribbonsAnimation
         .on('mouseover', (d, i, n) => {
-            setOpacity(arcsAnimation, dims.fadedOpacity);
-            setOpacity(ribbonsAnimation, dims.fadedOpacity);
             setOpacity(arcsAnimation.filter(arc => arc.index === d.target.index || arc.index === d.source.index), dims.focusOpacity);
             setOpacity(d3.select(n[i]), dims.focusOpacity);
+        });
+
+    ribbonsGroupAnimation
+        .on('mouseover', () => {
+            setOpacity(ribbonsAnimation, dims.fadedOpacity);
+            setOpacity(arcsAnimation, dims.fadedOpacity);
         })
-        .on('mouseleave', (d, i, n) => {
-            setOpacity(arcsAnimation, dims.opacity);
+        .on('mouseleave', () => {
             setOpacity(ribbonsAnimation, dims.opacity);
+            setOpacity(arcsAnimation, dims.opacity);
         });
 
     arcsAnimation
@@ -161,26 +209,48 @@ const createTicks = (d, step) => {
     });
 };
 
-const createParalogChords = (paralogs, chromosomes) => paralogs.map((paralog) => {
-    targetIndex = chromosomeToIndex[paralog.paralogChr];
-    sourceIndex = chromosomeToIndex[paralog.chromosome];
-    sourceChromosomeStartAngle = chromosomes[sourceIndex].startAngle + dims.ribbonPadAngle;
-    sourceChromosomeEndAngle = chromosomes[sourceIndex].endAngle - dims.ribbonPadAngle;
-    targetChromosomeStartAngle = chromosomes[targetIndex].startAngle + dims.ribbonPadAngle;
-    targetChromosomeEndAngle = chromosomes[targetIndex].endAngle - dims.ribbonPadAngle;
-    sourceRibbonStartAngle = paralog.geneStart / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
-    sourceRibbonEndAngle = paralog.geneEnd / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
-    targetRibbonStartAngle = paralog.paralogStart / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
-    targetRibbonEndAngle = paralog.paralogEnd / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
-    return {
-        source: { index: sourceIndex, subIndex: targetIndex, startAngle: sourceRibbonStartAngle, endAngle: sourceRibbonEndAngle },
-        target: { index: targetIndex, subIndex: sourceIndex, startAngle: targetRibbonStartAngle, endAngle: targetRibbonEndAngle }
-    };
-});
+//this is not working, it breaks because of this if
+const createParalogChords = (paralogs, chromosomes) =>
+    paralogs.map(paralog => {
+        console.log(chromosomes);
+        if (chromosomesDisplayed(paralog.chromosome, paralog.paralogChr, chromosomes)) {
+            targetIndex = chromosomeToIndex[paralog.paralogChr];
+            sourceIndex = chromosomeToIndex[paralog.chromosome];
+            sourceChromosomeStartAngle = chromosomes[sourceIndex].startAngle + dims.ribbonPadAngle;
+            sourceChromosomeEndAngle = chromosomes[sourceIndex].endAngle - dims.ribbonPadAngle;
+            targetChromosomeStartAngle = chromosomes[targetIndex].startAngle + dims.ribbonPadAngle;
+            targetChromosomeEndAngle = chromosomes[targetIndex].endAngle - dims.ribbonPadAngle;
+            sourceRibbonStartAngle = paralog.geneStart / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
+            sourceRibbonEndAngle = paralog.geneEnd / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
+            targetRibbonStartAngle = paralog.paralogStart / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
+            targetRibbonEndAngle = paralog.paralogEnd / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
+            return {
+                source: { index: sourceIndex, subIndex: targetIndex, startAngle: sourceRibbonStartAngle, endAngle: sourceRibbonEndAngle },
+                target: { index: targetIndex, subIndex: sourceIndex, startAngle: targetRibbonStartAngle, endAngle: targetRibbonEndAngle }
+            };
+        }
+    });
+
+const chromosomesDisplayed = (chromosome, paralogChromosome, chromosomes) => {
+    const displayed = chromosomes.reduce((displayed, chromosomeDrawn) => {
+        if (displayed == 0) {
+            return chromosome in chromosomeDrawn.data ? 1 : 0;
+        }
+        else {
+            return paralogChromosome in chromosomeDrawn.data ? 2 : 1;
+        }
+    });
+    return displayed == 2 ? true : false;
+};
 
 const setOpacity = (elements, opacity) => {
-    console.log(elements);
     elements.style('opacity', opacity);
-}
+};
 
-update();
+d3.tsv("Primer_test_genome1.tsv")
+    .then(genomeData => {
+        d3.tsv("Primer_test_paralogsG1.tsv")
+            .then(paralogData => {
+                update(genomeData, paralogData);
+            });
+    });
