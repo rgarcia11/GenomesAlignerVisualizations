@@ -76,8 +76,9 @@ const update = (genomeData, paralogsData) => {
     chordGroupData.map(item => createTicks(item, 400000)).forEach(item => {
         chordTicks = [...chordTicks, ...item];
     });
-
-    const ribbons = ribbonsGroup.selectAll('.ribbon').data(createParalogChords(paralogsData, chordGroupData));
+    ribbonsData = createParalogChords(genomeData, paralogsData, chordGroupData);
+    console.log(ribbonsData);
+    const ribbons = ribbonsGroup.selectAll('.ribbon').data(ribbonsData);
     const arcs = arcsGroup.selectAll('.arc').data(chordGroupData);
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
 
@@ -210,12 +211,13 @@ const createTicks = (d, step) => {
 };
 
 //this is not working, it breaks because of this if
-const createParalogChords = (paralogs, chromosomes) =>
-    paralogs.map(paralog => {
-        console.log(chromosomes);
+const createParalogChords = (genomeData, paralogs, chromosomes) => {
+    paralogChords = [];
+    paralogs.forEach(paralog => {
         if (chromosomesDisplayed(paralog.chromosome, paralog.paralogChr, chromosomes)) {
-            targetIndex = chromosomeToIndex[paralog.paralogChr];
-            sourceIndex = chromosomeToIndex[paralog.chromosome];
+            const chromosomeIndexes = chromosomeToIndex(genomeData);
+            targetIndex = chromosomeIndexes[paralog.paralogChr];
+            sourceIndex = chromosomeIndexes[paralog.chromosome];
             sourceChromosomeStartAngle = chromosomes[sourceIndex].startAngle + dims.ribbonPadAngle;
             sourceChromosomeEndAngle = chromosomes[sourceIndex].endAngle - dims.ribbonPadAngle;
             targetChromosomeStartAngle = chromosomes[targetIndex].startAngle + dims.ribbonPadAngle;
@@ -224,23 +226,34 @@ const createParalogChords = (paralogs, chromosomes) =>
             sourceRibbonEndAngle = paralog.geneEnd / chromosomes[sourceIndex].value * (sourceChromosomeEndAngle - sourceChromosomeStartAngle) + sourceChromosomeStartAngle;
             targetRibbonStartAngle = paralog.paralogStart / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
             targetRibbonEndAngle = paralog.paralogEnd / chromosomes[targetIndex].value * (targetChromosomeEndAngle - targetChromosomeStartAngle) + targetChromosomeStartAngle;
-            return {
+            paralogChords.push( {
                 source: { index: sourceIndex, subIndex: targetIndex, startAngle: sourceRibbonStartAngle, endAngle: sourceRibbonEndAngle },
                 target: { index: targetIndex, subIndex: sourceIndex, startAngle: targetRibbonStartAngle, endAngle: targetRibbonEndAngle }
-            };
+            });
         }
-    });
+    }
+    );
+    return paralogChords;
+}
 
 const chromosomesDisplayed = (chromosome, paralogChromosome, chromosomes) => {
-    const displayed = chromosomes.reduce((displayed, chromosomeDrawn) => {
-        if (displayed == 0) {
-            return chromosome in chromosomeDrawn.data ? 1 : 0;
+    const displayed = { chromosome: false, paralogChromosome: false };
+    chromosomes.forEach((chromosomeDrawn) => {
+        if (chromosome === chromosomeDrawn.data.Name) {
+            displayed.chromosome = true;
         }
-        else {
-            return paralogChromosome in chromosomeDrawn.data ? 2 : 1;
+        if (paralogChromosome === chromosomeDrawn.data.Name) {
+            displayed.paralogChromosome = true;
         }
     });
-    return displayed == 2 ? true : false;
+    return displayed.chromosome && paralogChromosome;
+};
+
+const chromosomeToIndex = (genomeData) => {
+    let chromosomeToIndex = {};
+    let counter = 0;
+    genomeData.forEach(chromosome => chromosomeToIndex[chromosome.Name] = counter++);
+    return chromosomeToIndex;
 };
 
 const setOpacity = (elements, opacity) => {
