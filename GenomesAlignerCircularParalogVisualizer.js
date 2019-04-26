@@ -83,7 +83,7 @@ const update = (genomeData, paralogsData) => {
     genomeData = genomeData.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-
+    console.log(genomeData);
     const chordGroupData = pie(genomeData);
     let chordTicks = [];
     chordGroupData.map(item => createTicks(item, dims.ticksSpacing)).forEach(item => {
