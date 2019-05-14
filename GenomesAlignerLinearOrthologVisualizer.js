@@ -15,25 +15,10 @@ minimumChromosomeLength = 30000;
 
 const dims = {
     height: 800,
-    width: 900
+    width: 1000
 }
 
-const margin = { left: 100, right: 20, top: 20, bottom: 20 };
-
-var dimensionss = [
-    {
-        name: "averageA",
-        scale: d3.scaleLinear().range([dims.height, 0]),
-        type: "number"
-    },
-    {
-        name: "averageB",
-        scale: d3.scaleLinear().range([dims.height, 0]),
-        type: "number"
-    }
-];
-
-const x = d3.scaleOrdinal().range([0, dims.width])
+const margin = { left: 80, right: 20, top: 20, bottom: 20 };
 
 const graph = d3.selectAll('.canvas')
     .append('svg')
@@ -50,43 +35,35 @@ const y1 = d3.scaleLinear()
     .range([0, dims.height]);
 const y2 = d3.scaleLinear()
     .range([0, dims.height]);
+const color = d3.scaleOrdinal([
+    '#66c2a5',
+    '#fc8d62',
+    '#8da0cb',
+    '#e78ac3',
+    '#8dd3c7',
+    '#bebada',
+    '#fb8072',
+    '#80b1d3',
+    '#fdb462',
+    '#b3de69',
+    '#fccde5',
+    '#d9d9d9'
+]);
 
 // axes groups
 const y1AxisGroup = graph.append('g')
     .attr('class', 'y1-axis')
-    .attr('transform', 'translate(20, 5)');
+    .attr('transform', `translate(${margin.left}, 0)`);
 const y2AxisGroup = graph.append('g')
     .attr('class', 'y2-axis')
-    .attr('transform', `translate(${dims.width}, 5)`);
-
-// lines
-const line = d3.line()
-    .x(margin.left)
-    .y(d => y2(d.geneStartG2));
-// .curve(d3.curveMonotoneX);
-
-const path = d => {
-    // //console.log(d)
-    // //var a = line(dimensions.map(function(p) { 
-    // //console.log(p)
-    // //return [position(p), y[p](d[p])]; }));
-    // //console.log(dimensions.map(function(p) { return [position(p), y[p](d[p])]; }))
-    // //return a;
-    // linee = line(dimensionss.map(function (dimension) {
-    //     return [x(dimension.name), dimension.scale(d[dimension.name])];
-    // }));
-    // return linee;
-    console.log(d);
-    console.log(line(d));
-    return line([[0, 5000], [200, 500]]);
-}
+    .attr('transform', `translate(${dims.width}, 0)`);
 
 // brush (selection)
 const brush1 = d3.brushY()
-    .extent([[0, 0], [dims.width / 2, dims.height + 20]])
+    .extent([[0, 0], [dims.width / 2, dims.height]])
     .on("end", brushended1);
 const brush2 = d3.brushY()
-    .extent([[dims.width / 2, 0], [dims.width, dims.height + 20]])
+    .extent([[dims.width / 2, 0], [dims.width, dims.height]])
     .on("end", brushended2);
 var idleTimeout;
 const idleDelay = 350;
@@ -103,7 +80,7 @@ function brushended1() {
     var s = d3.event.selection;
     if (!s) {
         if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
-        y1.domain([0, max]);
+        y1.domain([0, maxG1]);
     } else {
         y1.domain([s[0], s[1]].map(y1.invert, y1));
         graph.select(".brush1").call(brush1.move, null);
@@ -115,7 +92,7 @@ function brushended2() {
     var s = d3.event.selection;
     if (!s) {
         if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
-        y2.domain([0, max]);
+        y2.domain([0, maxG2]);
     } else {
         y2.domain([s[0], s[1]].map(y2.invert, y2));
         graph.select(".brush2").call(brush2.move, null);
@@ -132,7 +109,7 @@ function zoom1() {
     graph.select(".y1-axis").transition(t).call(y1Axis);
     graph.selectAll("line.orthologLine").transition(t)
         .attr("y1", d => {
-            return y1((d.geneStart))
+            return y1(d.geneStart)
         });
 }
 
@@ -141,7 +118,7 @@ function zoom2() {
     graph.select(".y2-axis").transition(t).call(y2Axis);
     graph.selectAll("line.orthologLine").transition(t)
         .attr("y2", d => {
-            return y2((d.geneStartG2))
+            return y2(d.geneStartG2)
         });
 }
 
@@ -151,13 +128,15 @@ const y1Axis = d3.axisLeft(y1)
 const y2Axis = d3.axisRight(y2)
     .ticks(4);
 
-let max = 0;
+let maxG1 = 0;
+let maxG2 = 0;
 let currentCrms = {};
-let lengths = {};
-const update = (genomeData1, genomeData2, crmsA) => {
+let lengthsG1 = {};
+let lengthsG2 = {};
+const update = (genomeData1, genomeData2, orthologs) => {
 
     // Prepare data
-    currentCrms = crmsA[0];
+    currentCrms = orthologs[0];
     genomeData1 = genomeData2.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
@@ -166,24 +145,33 @@ const update = (genomeData1, genomeData2, crmsA) => {
     });
 
     genomeData1.forEach(g => {
-        lengths[g.Name] = max;
-        max += parseInt(g.Length);
+        lengthsG1[g.Name] = maxG1;
+        maxG1 += parseInt(g.Length);
     });
     console.log(genomeData1);
-    console.log(lengths);
+    console.log(lengthsG1);
+    genomeData2.forEach(g => {
+        lengthsG2[g.Name] = maxG2;
+        maxG2 += parseInt(g.Length);
+    });
+    console.log(genomeData2);
+    console.log(lengthsG2);
 
-    console.log(crmsA);
-    crmsA = createLineData(genomeData1, genomeData2, crmsA);
-    console.log(crmsA);
+    console.log(maxG1);
+    console.log(maxG2);
 
-    const lines = linesGroup.selectAll('line.orthologLine').data(crmsA);
+    console.log(orthologs);
+    orthologs = createLineData(genomeData1, genomeData2, orthologs);
+    console.log(orthologs);
+
+    const lines = linesGroup.selectAll('line.orthologLine').data(orthologs);
 
 
     // Update scale domains
 
-    y1.domain([0, max]);
-    y2.domain([0, max]);
-
+    y1.domain([0, maxG1]);
+    y2.domain([0, maxG2]);
+    color.domain(genomeData2.map(chromosome => chromosome.Name));
 
     // Call axes
     y1AxisGroup.call(y1Axis);
@@ -213,11 +201,12 @@ const update = (genomeData1, genomeData2, crmsA) => {
     lines.enter()
         .append('line')
         .attr('class', 'orthologLine')
-        .attr('x1', 20)
+        .attr('id', d => `${d.geneId}::${d.geneIdG2}`)
+        .attr('x1', margin.left)
         .attr('x2', dims.width)
         .attr('y1', d => y1(d.geneStart))
         .attr('y2', d => y2(d.geneStartG2))
-        .style('stroke', 'black');
+        .style('stroke', d => color(d.chromosome));
 
 
     // Animations
@@ -225,14 +214,14 @@ const update = (genomeData1, genomeData2, crmsA) => {
 
 // create data to draw the lines in the correct positions
 // its actually a filter for the orthologs, but can be extended
-const createLineData = (genomeData1, genomeData2, crmsA) => {
+const createLineData = (genomeData1, genomeData2, orthologs) => {
     lineData = []
-    crmsA.forEach((ortholog) => {
+    orthologs.forEach((ortholog) => {
         if (chromosomesDisplayed(genomeData1, genomeData2, ortholog)) {
-            ortholog.geneStart += lengths[ortholog.chromosome];
-            ortholog.geneStartG2 += lengths[ortholog.chromosomeG2];
-            ortholog.geneEnd += lengths[ortholog.chromosome];
-            ortholog.geneEndG2 += lengths[ortholog.chromosomeG2];
+            ortholog.geneStart = lengthsG1[ortholog.chromosome] + parseInt(ortholog.geneStart);
+            ortholog.geneStartG2 = lengthsG2[ortholog.chromosomeG2] + parseInt(ortholog.geneStartG2);
+            ortholog.geneEnd = lengthsG1[ortholog.chromosome] + parseInt(ortholog.geneEnd);
+            ortholog.geneEndG2 = lengthsG2[ortholog.chromosomeG2] + parseInt(ortholog.geneEndG2);
 
             lineData.push(ortholog);
         }
@@ -261,8 +250,8 @@ d3.tsv(genome1)
     .then(genomeData1 => {
         d3.tsv(genome2)
             .then(genomeData2 => {
-                d3.tsv(orthologsG1).then(crmsA => {
-                    update(genomeData1, genomeData2, crmsA);
+                d3.tsv(orthologsG1).then(orthologs => {
+                    update(genomeData1, genomeData2, orthologs);
                 });
             });
     });

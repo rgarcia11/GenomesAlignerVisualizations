@@ -60,7 +60,7 @@ const arc = d3.arc()
 const ribbon = d3.ribbon()
     .radius(dims.innerRadius);
 
-const colour = d3.scaleOrdinal([
+const color = d3.scaleOrdinal([
     '#66c2a5',
     '#fc8d62',
     '#8da0cb',
@@ -96,7 +96,7 @@ const update = (genomeData, paralogsData) => {
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
 
     // Update scales domains
-    colour.domain(chordGroupData.map(chordGroupMember => chordGroupMember.index));
+    color.domain(chordGroupData.map(chordGroupMember => chordGroupMember.index));
 
     // Exit selection
     ribbons.exit().remove();
@@ -112,8 +112,8 @@ const update = (genomeData, paralogsData) => {
     arcsToDraw
         .append('g')
         .append('path')
-        .attr('fill', d => colour(d.index))
-        .attr('stroke', d => d3.color(colour(d.index)).darker(1))
+        .attr('fill', d => color(d.index))
+        .attr('stroke', d => d3.color(color(d.index)).darker(1))
         .style('opacity', dims.opacity)
         .attr('class', 'arc')
         .attr('id', (d, i) => `arc${i}`)
@@ -128,7 +128,7 @@ const update = (genomeData, paralogsData) => {
             const c = arc.innerRadius(dims.labelRadius).centroid(d);
             return `translate(${c[0]}, ${c[1]}) rotate(${d.angle * 180 / Math.PI - 90}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`;
         })
-        .attr('fill', d => colour(d.index))
+        .attr('fill', d => color(d.index))
         .style('width', 20)
 
     chromosomeLabels.append("text")
@@ -139,8 +139,8 @@ const update = (genomeData, paralogsData) => {
     ribbons.enter()
         .append('g')
         .append('path')
-        .attr('fill', d => colour(d.target.index))
-        .attr('stroke', d => d3.color(colour(d.target.index)).darker(1))
+        .attr('fill', d => color(d.target.index))
+        .attr('stroke', d => d3.color(color(d.target.index)).darker(1))
         .style('opacity', dims.opacity)
         .attr('class', 'ribbon')
         .attr('d', ribbon);
