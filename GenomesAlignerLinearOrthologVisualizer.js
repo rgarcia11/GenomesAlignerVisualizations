@@ -1,6 +1,6 @@
 genome1 = "b_genome1.tsv";
 genome2 = "b_genome2.tsv";
-orthologsG1 = "b_orthologsG1.tsv";
+orthologsG1 = "b_orthologsG3.tsv";
 orthologsG2 = "b_orthologsG2.tsv";
 paralogsG1 = "b_paralogsG1.tsv";
 paralogsG2 = "b_paralogsG2.tsv";
@@ -11,6 +11,8 @@ containerSection.append('h5').attr('class', 'black-text center').text('Linear vi
 const canvasContainer = option.append('div').attr('class', 'container');
 canvasContainer.append('div').attr('class', 'canvas');
 
+minimumChromosomeLength = 30000;
+
 const dims = {
     height: 800,
     width: 900
@@ -18,11 +20,30 @@ const dims = {
 
 const margin = { left: 100, right: 20, top: 20, bottom: 20 };
 
+var dimensionss = [
+    {
+        name: "averageA",
+        scale: d3.scaleLinear().range([dims.height, 0]),
+        type: "number"
+    },
+    {
+        name: "averageB",
+        scale: d3.scaleLinear().range([dims.height, 0]),
+        type: "number"
+    }
+];
+
+const x = d3.scaleOrdinal().range([0, dims.width])
+
 const graph = d3.selectAll('.canvas')
     .append('svg')
     .attr('width', dims.width + margin.left + margin.right)
     .attr('height', dims.height + margin.top + margin.bottom)
     .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+// group for ortholog lines
+const linesGroup = graph.append('g')
+        .attr('class', 'orthologLines');
 
 //scales
 const y1 = d3.scaleLinear()
@@ -40,9 +61,25 @@ const y2AxisGroup = graph.append('g')
 
 // lines
 const line = d3.line()
-    .x(d => x(d.x))
-    .y(d => y(d.y))
-    .curve(d3.curveMonotoneX);
+    .x(margin.left)
+    .y(d => y2(d.geneStartG2));
+// .curve(d3.curveMonotoneX);
+
+const path = d => {
+    // //console.log(d)
+    // //var a = line(dimensions.map(function(p) { 
+    // //console.log(p)
+    // //return [position(p), y[p](d[p])]; }));
+    // //console.log(dimensions.map(function(p) { return [position(p), y[p](d[p])]; }))
+    // //return a;
+    // linee = line(dimensionss.map(function (dimension) {
+    //     return [x(dimension.name), dimension.scale(d[dimension.name])];
+    // }));
+    // return linee;
+    console.log(d);
+    console.log(line(d));
+    return line([[0, 5000], [200, 500]]);
+}
 
 // brush (selection)
 const brush1 = d3.brushY()
@@ -93,17 +130,17 @@ function idled() {
 function zoom1() {
     var t = graph.transition().duration(750);
     graph.select(".y1-axis").transition(t).call(y1Axis);
-    graph.selectAll("circle").transition(t)
-        .attr("cx", function (d) { return x(d[0]); })
-        .attr("cy", function (d) { return y(d[1]); });
+    graph.selectAll("line.orthologLine").transition(t)
+        .attr("y1", d => {
+            return y1((d.geneStart))});
 }
 
 function zoom2() {
     var t = graph.transition().duration(750);
     graph.select(".y2-axis").transition(t).call(y2Axis);
-    graph.selectAll("circle").transition(t)
-        .attr("cx", function (d) { return x(d[0]); })
-        .attr("cy", function (d) { return y(d[1]); });
+    graph.selectAll("line.orthologLine").transition(t)
+        .attr("y2", d => {
+            return y2((d.geneStartG2))});
 }
 
 // Create axes
@@ -113,24 +150,29 @@ const y2Axis = d3.axisRight(y2)
     .ticks(4);
 
 var max = 0;
-
-const update = (genomeData1, genomeData2, crmsA, crmsB) => {
+let currentCrms = {};
+const update = (genomeData1, genomeData2, crmsA) => {
     // Prepare data
-    // const lcs = 0
-    // const genomeData1 = [4, 5, 6, 7, 8, 9]
-    // const genomeData2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     console.log(genomeData1);
     console.log(genomeData2);
     console.log(crmsA);
-    console.log(crmsB);
-    genomeData1.forEach(g => {
-        max += parseInt(g.Length);
+    console.log(crmsA[0]);
+    console.log(line(crmsA[0]));
+    currentCrms = crmsA[0];
+    genomeData1 = genomeData2.filter(chromosome => {
+        return chromosome.Length > minimumChromosomeLength;
     });
-    console.log(max);
+    genomeData2 = genomeData2.filter(chromosome => {
+        return chromosome.Length > minimumChromosomeLength;
+    });
+    const lines = linesGroup.selectAll('line.orthologLine').data(crmsA);
 
+    
     // Update scale domains
+    genomeData1.forEach(g => {
+            max += parseInt(g.Length);
+        });
 
-    // y.domain([0, d3.max(crmsB, d => d.distance)]);
     y1.domain([0, max]);
     y2.domain([0, max]);
 
@@ -140,10 +182,35 @@ const update = (genomeData1, genomeData2, crmsA, crmsB) => {
     y2AxisGroup.call(y2Axis);
 
     // Exit selection
+    console.log(lines.exit());
+    lines.exit().remove();
 
     // Current selection
+    lines.remove();
 
     // Enter selection
+    // lines.enter();
+    // graph.append('g')
+    //     .attr('class', 'chromosomeLines')
+    //     .append('line')
+    //     .attr('class', 'chromosomeLine')
+    //     .attr('x1', margin.left)
+    //     .attr('x2', dims.width)
+    //     .attr('y1', y1(currentCrms.geneStart + 200))
+    //     .attr('y2', y2(currentCrms.geneStartG2 + 8000))
+    //     .style('stroke', 'black');
+    // .attr('d', path);
+    
+
+    lines.enter()
+        .append('line')
+        .attr('class', 'orthologLine')
+        .attr('x1', 20)
+        .attr('x2', dims.width)
+        .attr('y1', d => y1(d.geneStart))
+        .attr('y2', d => y2(d.geneStartG2))
+        .style('stroke', 'black');
+
 
     // Animations
 }
@@ -153,10 +220,8 @@ d3.tsv(genome1)
     .then(genomeData1 => {
         d3.tsv(genome2)
             .then(genomeData2 => {
-                d3.tsv(orthologsG1).then(  crmsA => {
-                    d3.tsv(orthologsG2).then(crmsB => {
-                        update(genomeData1, genomeData2, crmsA, crmsB);
-                    });
+                d3.tsv(orthologsG1).then(crmsA => {
+                    update(genomeData1, genomeData2, crmsA);
                 });
             });
     });
