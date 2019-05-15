@@ -11,8 +11,11 @@ const containerSection = option.append('div').attr('class', 'container section')
 containerSection.append('h1').attr('class', 'black-text center').text('Linear visualization');
 option.append("input").attr("type", "button").attr("onClick", "history.go(0)").attr("value", "Start again!");
 option.append("input").attr("id", "LCSbutton").attr("type", "button").attr("value", "LCS");
+d3.select("#LCSbutton").on("click", showLCS);
 option.append("input").attr("id", "Multiplebutton").attr("type", "button").attr("value", "Multiple");
+d3.select("#Multiplebutton").on("click", showMultiple);
 option.append("input").attr("id", "Uniquesbutton").attr("type", "button").attr("value", "Uniques");
+d3.select("#Uniquesbutton").on("click", showUniques);
 
 const canvasContainer = option.append('div').attr('class', 'container');
 canvasContainer.append('div').attr('class', 'canvas');
@@ -26,7 +29,7 @@ const dims = {
 
 const margin = { left: 80, right: 20, top: 20, bottom: 20 };
 
-let allOrthologs;
+let allOrthologs = {};
 let displayedOrthologs;
 let genomeData1;
 let genomeData2;
@@ -87,6 +90,7 @@ const idleDelay = 350;
 
 graph.append("g")
     .attr("class", "brush1")
+    .attr('transform', `translate(${margin.left}, 0)`)
     .call(brush1);
 
 graph.append("g")
@@ -135,7 +139,7 @@ function zoom1() {
         .attr('transform', d => `translate(${margin.left - 50}, 
                 ${d.Name === topPinnedLabel ?
                 y1.range()[0] + margin.top :
-                d.Name === bottomPinnedLabel  && y1(d.Length / 2 + lengthsG1[d.Name]) > y1.range()[1] ?
+                d.Name === bottomPinnedLabel && y1(d.Length / 2 + lengthsG1[d.Name]) > y1.range()[1] ?
                     y1.range()[1] :
                     y1(d.Length / 2 + lengthsG1[d.Name]) + margin.top})`)
 }
@@ -314,6 +318,28 @@ const chromosomesDisplayed = (genomeData1, genomeData2, ortholog) => {
     return displayed.genome1 && displayed.genome2;
 };
 
+// Show LCS
+function showLCS() {
+    paintData(allOrthologs.lcs);
+}
+
+// Show multiples
+function showMultiple() {
+    paintData(allOrthologs.multiple);
+    
+}
+
+// Show uniques
+function showUniques() {
+    paintData(allOrthologs.unique);
+}
+
+// Split data
+const divideOrthologs = orthologs => {
+    dividedOrthologs = { 'lcs': orthologs.slice(1, 10), 'multiple': orthologs.slice(5, 15), 'unique': orthologs.slice(10, 20) };
+    return dividedOrthologs;
+}
+
 // Read data
 d3.tsv(genome1)
     .then(genomeData1r => {
@@ -321,12 +347,13 @@ d3.tsv(genome1)
         d3.tsv(genome2)
             .then(genomeData2r => {
                 genomeData2 = genomeData2r;
-                d3.tsv(orthologsG1).then(orthologs => {
-                    allOrthologs = orthologs;
-                    displayedOrthologs = [...allOrthologs];
-                    prepareData();
-                    paintData(orthologs);
-                });
+                d3.tsv(orthologsG1)
+                    .then(orthologs => {
+                        allOrthologs = divideOrthologs(orthologs);
+                        displayedOrthologs = {...allOrthologs};
+                        prepareData();
+                        // paintData(allOrthologs);
+                    });
             });
     });
 
