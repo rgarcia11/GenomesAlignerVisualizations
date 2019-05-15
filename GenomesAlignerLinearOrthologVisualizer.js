@@ -1,6 +1,6 @@
 genome1 = "b_genome1.tsv";
 genome2 = "b_genome2.tsv";
-orthologsG1 = "b_orthologsG3.tsv";
+orthologsG1 = "b_orthologsG1.tsv";
 orthologsG2 = "b_orthologsG2.tsv";
 paralogsG1 = "b_paralogsG1.tsv";
 paralogsG2 = "b_paralogsG2.tsv";
@@ -282,12 +282,9 @@ const paintData = orthologs => {
         .attr('x1', margin.left)
         .attr('x2', dims.width)
         .attr('y1', d => y1(d.geneStart))
-        .attr('y2', d => {
-            console.log(y2(d.geneStartG2));
-            return y2(d.geneStartG2);
-        })
+        .attr('y2', d => y2(d.geneStartG2))
         .style('stroke', d => color(d.chromosome));
-    
+
     // Animations
     zoom1();
     zoom2();
@@ -345,7 +342,16 @@ function showUniques() {
 // Split data
 const divideOrthologs = orthologs => {
     orthologs = createLineData(orthologs);
-    dividedOrthologs = { 'lcs': orthologs.slice(0, 5), 'multiple': orthologs.slice(5, 15), 'unique': orthologs.slice(10, 25) };
+    orthologsLCS = [];
+    orthologsMultiple = [];
+    orthologsUnique = [];
+    orthologs.map(ortholog => {
+        if (ortholog.type === 'L') orthologsLCS.push(ortholog)
+        if (ortholog.type === 'M') orthologsMultiple.push(ortholog)
+        if (ortholog.type === 'U') orthologsUnique.push(ortholog)
+    });
+
+    dividedOrthologs = { 'lcs': orthologsLCS, 'multiple': orthologsMultiple, 'unique': orthologsUnique };
     return dividedOrthologs;
 }
 
