@@ -122,7 +122,7 @@ function zoom1() {
         .attr("y1", d => {
             return y1(d.geneStart)
         }).transition(t)
-        .attr('visibility', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] ? 'hidden' : null);
+        .attr('visibility', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] || d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 'hidden' : null);
 
     topPinnedLabel = topPinnedLabelG1(y1.domain()[0]);
     bottomPinnedLabel = bottomPinnedLabelG1(y1.domain()[1]);
@@ -142,7 +142,7 @@ function zoom2() {
         .attr("y2", d => {
             return y2(d.geneStartG2)
         })
-        .attr('visibility', d => d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 'hidden' : null);
+        .attr('visibility', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] || d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 'hidden' : null);
     topPinnedLabel = topPinnedLabelG2(y2.domain()[0]);
     bottomPinnedLabel = bottomPinnedLabelG2(y2.domain()[1]);
     graph.selectAll('text.chromosomeLabelG2').transition(t)
@@ -203,20 +203,19 @@ const y2Axis = d3.axisRight(y2)
 
 let maxG1 = 0;
 let maxG2 = 0;
-let currentCrms = {};
 let lengthsG1 = {};
 let lengthsG2 = {};
 const update = (orthologs) => {
 
     // Prepare data
-    currentCrms = orthologs[0];
+    //// Filter chromosomes/scaffolds
     genomeData1 = genomeData1.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
     genomeData2 = genomeData2.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-
+    //// Get the max and relative lengths for axes
     genomeData1.forEach(g => {
         lengthsG1[g.Name] = maxG1;
         maxG1 += parseInt(g.Length);
@@ -225,37 +224,15 @@ const update = (orthologs) => {
         lengthsG2[g.Name] = maxG2;
         maxG2 += parseInt(g.Length);
     });
-    orthologs = createLineData(genomeData1, genomeData2, orthologs);
-
-
-    const lines = linesGroup.selectAll('line.orthologLine').data(orthologs);
-
-    // Update scale domains
-
+    //// Update scale domains with the newfound max
     y1.domain([0, maxG1]);
     y2.domain([0, maxG2]);
-    color.domain(genomeData2.map(chromosome => chromosome.Name));
+    //// Update color domain with chromosome names
+    color.domain(genomeData1.map(chromosome => chromosome.Name));
 
     // Call axes
     y1AxisGroup.call(y1Axis);
     y2AxisGroup.call(y2Axis);
-
-    // Exit selection
-    lines.exit().remove();
-
-    // Current selection
-    lines.remove();
-
-    // Enter selection
-    lines.enter()
-        .append('line')
-        .attr('class', 'orthologLine')
-        .attr('id', d => `${d.geneId}::${d.geneIdG2}`)
-        .attr('x1', margin.left)
-        .attr('x2', dims.width)
-        .attr('y1', d => y1(d.geneStart))
-        .attr('y2', d => y2(d.geneStartG2))
-        .style('stroke', d => color(d.chromosome));
 
     // Chromosome labels
     const labelsG1 = chromosomeLabelsG1.selectAll('text').data(genomeData1);
@@ -275,22 +252,39 @@ const update = (orthologs) => {
         .attr('text-anchor', 'start')
         .attr('fill', d => color(d.Name));
 
+    paintData(orthologs);
+}
 
-    // .attr("transform", function (d, i) {
-    //     const c = arc.innerRadius(dims.labelRadius).centroid(d);
-    //     return `translate(${c[0]}, ${c[1]}) rotate(${d.angle * 180 / Math.PI - 90}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`;
-    // })
-    // .attr('fill', d => color(d.index))
-    // .style('width', 20)
+const paintData = orthologs => {
+    // Create data to be painted
+    orthologs = createLineData(orthologs);
+    const lines = linesGroup.selectAll('line.orthologLine').data(orthologs);
+
+    // Exit selection
+    lines.exit().remove();
+
+    // Current selection
+    lines.remove();
+
+    // Enter selection
+    lines.enter()
+        .append('line')
+        .attr('class', 'orthologLine')
+        .attr('id', d => `${d.geneId}::${d.geneIdG2}`)
+        .attr('x1', margin.left)
+        .attr('x2', dims.width)
+        .attr('y1', d => y1(d.geneStart))
+        .attr('y2', d => y2(d.geneStartG2))
+        .style('stroke', d => color(d.chromosome));
 
     // Animations
-}
+};
 
 // create data to draw the lines in the correct positions
 // its actually a filter for the orthologs, but can be extended
-const createLineData = (genomeData1, genomeData2, orthologs) => {
+const createLineData = orthologs => {
     lineData = []
-    orthologs.forEach((ortholog) => {
+    orthologs.forEach(ortholog => {
         if (chromosomesDisplayed(genomeData1, genomeData2, ortholog)) {
             ortholog.geneStart = lengthsG1[ortholog.chromosome] + parseInt(ortholog.geneStart);
             ortholog.geneStartG2 = lengthsG2[ortholog.chromosomeG2] + parseInt(ortholog.geneStartG2);
@@ -301,7 +295,7 @@ const createLineData = (genomeData1, genomeData2, orthologs) => {
         }
     });
     return lineData;
-}
+};
 
 // Auxiliary function to check if a chromosome is displayed
 const chromosomesDisplayed = (genomeData1, genomeData2, ortholog) => {
