@@ -205,6 +205,8 @@ const bottomPinnedLabelG2 = value => {
 }
 
 // Create axes
+// TODO: ticks need to restart at every chromosome, 
+// or appear only at a certain zoom level
 const y1Axis = d3.axisLeft(y1)
     .ticks(4);
 const y2Axis = d3.axisRight(y2)
@@ -262,27 +264,33 @@ const prepareData = () => {
 
 const paintData = orthologs => {
     // Create data to be painted
-    orthologs = createLineData(orthologs);
     const lines = linesGroup.selectAll('line.orthologLine').data(orthologs);
+
+    // // Current selection
+    // lines.remove();
 
     // Exit selection
     lines.exit().remove();
 
-    // Current selection
-    lines.remove();
 
     // Enter selection
     lines.enter()
         .append('line')
+        .merge(lines)
         .attr('class', 'orthologLine')
         .attr('id', d => `${d.geneId}::${d.geneIdG2}`)
         .attr('x1', margin.left)
         .attr('x2', dims.width)
         .attr('y1', d => y1(d.geneStart))
-        .attr('y2', d => y2(d.geneStartG2))
+        .attr('y2', d => {
+            console.log(y2(d.geneStartG2));
+            return y2(d.geneStartG2);
+        })
         .style('stroke', d => color(d.chromosome));
-
+    
     // Animations
+    zoom1();
+    zoom2();
 };
 
 // Create data to draw the lines in the correct positions
@@ -326,7 +334,7 @@ function showLCS() {
 // Show multiples
 function showMultiple() {
     paintData(allOrthologs.multiple);
-    
+
 }
 
 // Show uniques
@@ -336,7 +344,8 @@ function showUniques() {
 
 // Split data
 const divideOrthologs = orthologs => {
-    dividedOrthologs = { 'lcs': orthologs.slice(1, 10), 'multiple': orthologs.slice(5, 15), 'unique': orthologs.slice(10, 20) };
+    orthologs = createLineData(orthologs);
+    dividedOrthologs = { 'lcs': orthologs.slice(0, 5), 'multiple': orthologs.slice(5, 15), 'unique': orthologs.slice(10, 25) };
     return dividedOrthologs;
 }
 
@@ -349,9 +358,9 @@ d3.tsv(genome1)
                 genomeData2 = genomeData2r;
                 d3.tsv(orthologsG1)
                     .then(orthologs => {
-                        allOrthologs = divideOrthologs(orthologs);
-                        displayedOrthologs = {...allOrthologs};
+                        displayedOrthologs = { ...allOrthologs };
                         prepareData();
+                        allOrthologs = divideOrthologs(orthologs);
                         // paintData(allOrthologs);
                     });
             });
