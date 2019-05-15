@@ -6,8 +6,14 @@ paralogsG1 = "b_paralogsG1.tsv";
 paralogsG2 = "b_paralogsG2.tsv";
 
 const option = d3.selectAll("#option");
+const form = option.append("form");
 const containerSection = option.append('div').attr('class', 'container section');
-containerSection.append('h5').attr('class', 'black-text center').text('Linear visualization');
+containerSection.append('h1').attr('class', 'black-text center').text('Linear visualization');
+option.append("input").attr("type", "button").attr("onClick", "history.go(0)").attr("value", "Start again!");
+option.append("input").attr("id", "LCSbutton").attr("type", "button").attr("value", "LCS");
+option.append("input").attr("id", "Multiplebutton").attr("type", "button").attr("value", "Multiple");
+option.append("input").attr("id", "Uniquesbutton").attr("type", "button").attr("value", "Uniques");
+
 const canvasContainer = option.append('div').attr('class', 'container');
 canvasContainer.append('div').attr('class', 'canvas');
 
@@ -123,14 +129,13 @@ function zoom1() {
             return y1(d.geneStart)
         }).transition(t)
         .attr('visibility', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] || d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 'hidden' : null);
-
     topPinnedLabel = topPinnedLabelG1(y1.domain()[0]);
     bottomPinnedLabel = bottomPinnedLabelG1(y1.domain()[1]);
     graph.selectAll('text.chromosomeLabelG1').transition(t)
         .attr('transform', d => `translate(${margin.left - 50}, 
                 ${d.Name === topPinnedLabel ?
                 y1.range()[0] + margin.top :
-                d.Name === bottomPinnedLabel ?
+                d.Name === bottomPinnedLabel  && y1(d.Length / 2 + lengthsG1[d.Name]) > y1.range()[1] ?
                     y1.range()[1] :
                     y1(d.Length / 2 + lengthsG1[d.Name]) + margin.top})`)
 }
@@ -149,7 +154,7 @@ function zoom2() {
         .attr('transform', d => `translate(${dims.width + margin.right}, 
             ${d.Name === topPinnedLabel ?
                 y2.range()[0] + margin.top :
-                d.Name === bottomPinnedLabel ?
+                d.Name === bottomPinnedLabel && y2(d.Length / 2 + lengthsG2[d.Name]) > y2.range()[1] ?
                     y2.range()[1] :
                     y2(d.Length / 2 + lengthsG2[d.Name]) + margin.top})`)
 }
@@ -205,17 +210,15 @@ let maxG1 = 0;
 let maxG2 = 0;
 let lengthsG1 = {};
 let lengthsG2 = {};
-const update = (orthologs) => {
-
-    // Prepare data
-    //// Filter chromosomes/scaffolds
+const prepareData = () => {
+    // Filter chromosomes/scaffolds
     genomeData1 = genomeData1.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
     genomeData2 = genomeData2.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-    //// Get the max and relative lengths for axes
+    // Get the max and relative lengths for axes
     genomeData1.forEach(g => {
         lengthsG1[g.Name] = maxG1;
         maxG1 += parseInt(g.Length);
@@ -224,10 +227,10 @@ const update = (orthologs) => {
         lengthsG2[g.Name] = maxG2;
         maxG2 += parseInt(g.Length);
     });
-    //// Update scale domains with the newfound max
+    // Update scale domains with the newfound max
     y1.domain([0, maxG1]);
     y2.domain([0, maxG2]);
-    //// Update color domain with chromosome names
+    // Update color domain with chromosome names
     color.domain(genomeData1.map(chromosome => chromosome.Name));
 
     // Call axes
@@ -251,8 +254,6 @@ const update = (orthologs) => {
         .attr('transform', d => `translate(${dims.width + margin.right}, ${y2(d.Length / 2 + lengthsG2[d.Name]) + margin.top})`)
         .attr('text-anchor', 'start')
         .attr('fill', d => color(d.Name));
-
-    paintData(orthologs);
 }
 
 const paintData = orthologs => {
@@ -280,8 +281,8 @@ const paintData = orthologs => {
     // Animations
 };
 
-// create data to draw the lines in the correct positions
-// its actually a filter for the orthologs, but can be extended
+// Create data to draw the lines in the correct positions
+// This is actually a filter for the orthologs, but can be extended
 const createLineData = orthologs => {
     lineData = []
     orthologs.forEach(ortholog => {
@@ -313,7 +314,7 @@ const chromosomesDisplayed = (genomeData1, genomeData2, ortholog) => {
     return displayed.genome1 && displayed.genome2;
 };
 
-// read data
+// Read data
 d3.tsv(genome1)
     .then(genomeData1r => {
         genomeData1 = genomeData1r;
@@ -323,7 +324,8 @@ d3.tsv(genome1)
                 d3.tsv(orthologsG1).then(orthologs => {
                     allOrthologs = orthologs;
                     displayedOrthologs = [...allOrthologs];
-                    update(displayedOrthologs);
+                    prepareData();
+                    paintData(orthologs);
                 });
             });
     });
