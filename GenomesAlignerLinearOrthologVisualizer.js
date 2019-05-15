@@ -20,11 +20,22 @@ const dims = {
 
 const margin = { left: 80, right: 20, top: 20, bottom: 20 };
 
+let allOrthologs;
+let displayedOrthologs;
+let genomeData1;
+let genomeData2;
+
 const graph = d3.selectAll('.canvas')
     .append('svg')
     .attr('width', dims.width + margin.left + margin.right)
     .attr('height', dims.height + margin.top + margin.bottom)
     .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+// group for chromosome labels
+const chromosomeLabelsG1 = graph.append('g')
+    .attr('class', 'chromosomeLabelsG1');
+const chromosomeLabelsG2 = graph.append('g')
+    .attr('class', 'chromosomeLabelsG2');
 
 // group for ortholog lines
 const linesGroup = graph.append('g')
@@ -106,20 +117,82 @@ function idled() {
 
 function zoom1() {
     var t = graph.transition().duration(750);
-    graph.select(".y1-axis").transition(t).call(y1Axis);
+    y1AxisGroup.transition(t).call(y1Axis);
     graph.selectAll("line.orthologLine").transition(t)
         .attr("y1", d => {
             return y1(d.geneStart)
-        });
+        }).transition(t)
+        .attr('visibility', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] ? 'hidden' : null);
+
+    topPinnedLabel = topPinnedLabelG1(y1.domain()[0]);
+    bottomPinnedLabel = bottomPinnedLabelG1(y1.domain()[1]);
+    graph.selectAll('text.chromosomeLabelG1').transition(t)
+        .attr('transform', d => `translate(${margin.left - 50}, 
+                ${d.Name === topPinnedLabel ?
+                y1.range()[0] + margin.top :
+                d.Name === bottomPinnedLabel ?
+                    y1.range()[1] :
+                    y1(d.Length / 2 + lengthsG1[d.Name]) + margin.top})`)
 }
 
 function zoom2() {
     var t = graph.transition().duration(750);
-    graph.select(".y2-axis").transition(t).call(y2Axis);
+    y2AxisGroup.transition(t).call(y2Axis);
     graph.selectAll("line.orthologLine").transition(t)
         .attr("y2", d => {
             return y2(d.geneStartG2)
-        });
+        })
+        .attr('visibility', d => d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 'hidden' : null);
+    topPinnedLabel = topPinnedLabelG2(y2.domain()[0]);
+    bottomPinnedLabel = bottomPinnedLabelG2(y2.domain()[1]);
+    graph.selectAll('text.chromosomeLabelG2').transition(t)
+        .attr('transform', d => `translate(${dims.width + margin.right}, 
+            ${d.Name === topPinnedLabel ?
+                y2.range()[0] + margin.top :
+                d.Name === bottomPinnedLabel ?
+                    y2.range()[1] :
+                    y2(d.Length / 2 + lengthsG2[d.Name]) + margin.top})`)
+}
+
+//auxiliary function to get which label to pin
+const topPinnedLabelG1 = value => {
+    let pinnedLabel;
+    Object.keys(lengthsG1).forEach((chromosome) => {
+        if (lengthsG1[chromosome] < value) {
+            pinnedLabel = chromosome
+        }
+    });
+    return pinnedLabel;
+}
+const bottomPinnedLabelG1 = value => {
+    let pinnedLabel = 0;
+    Object.keys(lengthsG1).forEach((chromosome, index, array) => {
+        const invertedChromosome = array[array.length - index - 1];
+        if (lengthsG1[invertedChromosome] < value && pinnedLabel === 0) {
+            pinnedLabel = invertedChromosome
+        }
+    });
+    return pinnedLabel;
+}
+
+const topPinnedLabelG2 = value => {
+    let pinnedLabel;
+    Object.keys(lengthsG2).forEach((chromosome) => {
+        if (lengthsG2[chromosome] < value) {
+            pinnedLabel = chromosome
+        }
+    });
+    return pinnedLabel;
+}
+const bottomPinnedLabelG2 = value => {
+    let pinnedLabel = 0;
+    Object.keys(lengthsG2).forEach((chromosome, index, array) => {
+        const invertedChromosome = array[array.length - index - 1];
+        if (lengthsG2[invertedChromosome] < value && pinnedLabel === 0) {
+            pinnedLabel = invertedChromosome
+        }
+    });
+    return pinnedLabel;
 }
 
 // Create axes
@@ -133,11 +206,11 @@ let maxG2 = 0;
 let currentCrms = {};
 let lengthsG1 = {};
 let lengthsG2 = {};
-const update = (genomeData1, genomeData2, orthologs) => {
+const update = (orthologs) => {
 
     // Prepare data
     currentCrms = orthologs[0];
-    genomeData1 = genomeData2.filter(chromosome => {
+    genomeData1 = genomeData1.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
     genomeData2 = genomeData2.filter(chromosome => {
@@ -148,24 +221,14 @@ const update = (genomeData1, genomeData2, orthologs) => {
         lengthsG1[g.Name] = maxG1;
         maxG1 += parseInt(g.Length);
     });
-    console.log(genomeData1);
-    console.log(lengthsG1);
     genomeData2.forEach(g => {
         lengthsG2[g.Name] = maxG2;
         maxG2 += parseInt(g.Length);
     });
-    console.log(genomeData2);
-    console.log(lengthsG2);
-
-    console.log(maxG1);
-    console.log(maxG2);
-
-    console.log(orthologs);
     orthologs = createLineData(genomeData1, genomeData2, orthologs);
-    console.log(orthologs);
+
 
     const lines = linesGroup.selectAll('line.orthologLine').data(orthologs);
-
 
     // Update scale domains
 
@@ -178,26 +241,12 @@ const update = (genomeData1, genomeData2, orthologs) => {
     y2AxisGroup.call(y2Axis);
 
     // Exit selection
-    console.log(lines.exit());
     lines.exit().remove();
 
     // Current selection
     lines.remove();
 
     // Enter selection
-    // lines.enter();
-    // graph.append('g')
-    //     .attr('class', 'chromosomeLines')
-    //     .append('line')
-    //     .attr('class', 'chromosomeLine')
-    //     .attr('x1', margin.left)
-    //     .attr('x2', dims.width)
-    //     .attr('y1', y1(currentCrms.geneStart + 200))
-    //     .attr('y2', y2(currentCrms.geneStartG2 + 8000))
-    //     .style('stroke', 'black');
-    // .attr('d', path);
-
-
     lines.enter()
         .append('line')
         .attr('class', 'orthologLine')
@@ -208,6 +257,31 @@ const update = (genomeData1, genomeData2, orthologs) => {
         .attr('y2', d => y2(d.geneStartG2))
         .style('stroke', d => color(d.chromosome));
 
+    // Chromosome labels
+    const labelsG1 = chromosomeLabelsG1.selectAll('text').data(genomeData1);
+    labelsG1.enter()
+        .append('text')
+        .attr('class', 'chromosomeLabelG1')
+        .text(d => d.Name)
+        .attr('transform', d => `translate(${margin.left - 50}, ${y1(d.Length / 2 + lengthsG1[d.Name]) + margin.top})`)
+        .attr('text-anchor', 'end')
+        .attr('fill', d => color(d.Name));
+    const labelsG2 = chromosomeLabelsG2.selectAll('text').data(genomeData2);
+    labelsG2.enter()
+        .append('text')
+        .attr('class', 'chromosomeLabelG2')
+        .text(d => d.Name)
+        .attr('transform', d => `translate(${dims.width + margin.right}, ${y2(d.Length / 2 + lengthsG2[d.Name]) + margin.top})`)
+        .attr('text-anchor', 'start')
+        .attr('fill', d => color(d.Name));
+
+
+    // .attr("transform", function (d, i) {
+    //     const c = arc.innerRadius(dims.labelRadius).centroid(d);
+    //     return `translate(${c[0]}, ${c[1]}) rotate(${d.angle * 180 / Math.PI - 90}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`;
+    // })
+    // .attr('fill', d => color(d.index))
+    // .style('width', 20)
 
     // Animations
 }
@@ -247,11 +321,15 @@ const chromosomesDisplayed = (genomeData1, genomeData2, ortholog) => {
 
 // read data
 d3.tsv(genome1)
-    .then(genomeData1 => {
+    .then(genomeData1r => {
+        genomeData1 = genomeData1r;
         d3.tsv(genome2)
-            .then(genomeData2 => {
+            .then(genomeData2r => {
+                genomeData2 = genomeData2r;
                 d3.tsv(orthologsG1).then(orthologs => {
-                    update(genomeData1, genomeData2, orthologs);
+                    allOrthologs = orthologs;
+                    displayedOrthologs = [...allOrthologs];
+                    update(displayedOrthologs);
                 });
             });
     });
