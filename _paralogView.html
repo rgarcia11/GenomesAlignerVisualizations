@@ -1,3 +1,43 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+</head>
+<style>
+		svg {
+		  font: 18px sans-serif;
+		}
+		.background path {
+		  fill: none;
+		  stroke: #ddd;
+		  shape-rendering: crispEdges;
+		}
+
+
+
+		.brush .extent {
+		  fill-opacity: .3;
+		  stroke: #fff;
+		  shape-rendering: crispEdges;
+		}
+
+		.axis line,
+		.axis path {
+		  fill: none;
+		  stroke: #000;
+		  shape-rendering: crispEdges;
+		}
+
+		.axis text {
+		  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+		  cursor: move;
+		}
+
+		</style>
+<body>
+<div id="option"></div>
+
+<script src="http://d3js.org/d3.v5.min.js"></script>
+<script>
 const orthologsG1 = "_orthologsG1.tsv";
 const orthologsG2 = "_orthologsG2.tsv";
 const paralogsG1 = "_paralogsG1.tsv";
@@ -28,7 +68,7 @@ const dims = {
     focusOpacity: 0.9
 };
 
-const minimumChromosomeLength = 500000;
+const minimumChromosomeLength = 5000000;
 
 const cent = {
     x: (dims.width / 2 + 5),
@@ -66,7 +106,7 @@ const arc = d3.arc()
 const ribbon = d3.ribbon()
     .radius(dims.innerRadius);
 
-const color = d3.scaleOrdinal([
+const colour = d3.scaleOrdinal([
     '#66c2a5',
     '#fc8d62',
     '#8da0cb',
@@ -89,20 +129,19 @@ const update = (genomeData, paralogsData) => {
     genomeData = genomeData.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-    console.log(genomeData);
+
     const chordGroupData = pie(genomeData);
     let chordTicks = [];
     chordGroupData.map(item => createTicks(item, dims.ticksSpacing)).forEach(item => {
         chordTicks = [...chordTicks, ...item];
     });
     ribbonsData = createParalogChords(genomeData, paralogsData, chordGroupData);
-    console.log(ribbonsData);
     const ribbons = ribbonsGroup.selectAll('.ribbon').data(ribbonsData);
     const arcs = arcsGroup.selectAll('.arc').data(chordGroupData);
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
 
     // Update scales domains
-    color.domain(chordGroupData.map(chordGroupMember => chordGroupMember.index));
+    colour.domain(chordGroupData.map(chordGroupMember => chordGroupMember.index));
 
     // Exit selection
     ribbons.exit().remove();
@@ -118,8 +157,8 @@ const update = (genomeData, paralogsData) => {
     arcsToDraw
         .append('g')
         .append('path')
-        .attr('fill', d => color(d.index))
-        .attr('stroke', d => d3.color(color(d.index)).darker(1))
+        .attr('fill', d => colour(d.index))
+        .attr('stroke', d => d3.color(colour(d.index)).darker(1))
         .style('opacity', dims.opacity)
         .attr('class', 'arc')
         .attr('id', (d, i) => `arc${i}`)
@@ -134,7 +173,7 @@ const update = (genomeData, paralogsData) => {
             const c = arc.innerRadius(dims.labelRadius).centroid(d);
             return `translate(${c[0]}, ${c[1]}) rotate(${d.angle * 180 / Math.PI - 90}) ${d.angle > Math.PI ? 'rotate(180)' : ''}`;
         })
-        .attr('fill', d => color(d.index))
+        .attr('fill', d => colour(d.index))
         .style('width', 20)
 
     chromosomeLabels.append("text")
@@ -145,8 +184,8 @@ const update = (genomeData, paralogsData) => {
     ribbons.enter()
         .append('g')
         .append('path')
-        .attr('fill', d => color(d.target.index))
-        .attr('stroke', d => d3.color(color(d.target.index)).darker(1))
+        .attr('fill', d => colour(d.target.index))
+        .attr('stroke', d => d3.color(colour(d.target.index)).darker(1))
         .style('opacity', dims.opacity)
         .attr('class', 'ribbon')
         .attr('d', ribbon);
@@ -287,3 +326,5 @@ d3.tsv(genome1)
                 update(genomeData, paralogData);
             });
     });
+</script>
+</body>
