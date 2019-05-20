@@ -21,7 +21,7 @@ const dims = {
     labelRadius: 270 + 120,
     padAngle: 0.02,
     ticksPadAngle: 0.014,
-    ticksSpacing: 8000000,
+    ticksSpacing: 200000,
     ribbonPadAngle: 0.015,
     opacity: 0.7,
     fadedOpacity: 0.01,
@@ -48,11 +48,6 @@ const circularAxisGroup = graph.append('g').attr('class', 'axis');
 const arcsGroup = graph.append('g').attr('class', 'chromosomeArcs');
 
 const ribbonsGroup = graph.append('g').attr('class', 'ribbons');
-
-const chord = d3.chord()
-    .padAngle(dims.padAngle)
-    .sortSubgroups(d3.descending);
-
 
 const pie = d3.pie()
     .sort(null)
@@ -89,12 +84,13 @@ const update = (genomeData, paralogsData) => {
     genomeData = genomeData.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-    console.log(genomeData);
+
     const chordGroupData = pie(genomeData);
     let chordTicks = [];
     chordGroupData.map(item => createTicks(item, dims.ticksSpacing)).forEach(item => {
         chordTicks = [...chordTicks, ...item];
     });
+    console.log(chordTicks);
     ribbonsData = createParalogChords(genomeData, paralogsData, chordGroupData);
     console.log(ribbonsData);
     const ribbons = ribbonsGroup.selectAll('.ribbon').data(ribbonsData);
@@ -174,7 +170,6 @@ const update = (genomeData, paralogsData) => {
 
 
     // Animations
-
     ribbonsAnimation = graph.selectAll('.ribbon');
     ribbonsGroupAnimation = graph.selectAll('.ribbons');
     arcsAnimation = graph.selectAll('.arc');
@@ -229,7 +224,14 @@ const createTicks = (d, step) => {
     });
 };
 
-//this is not working, it breaks because of this if
+// create the actual chords.
+// A chord has:
+//  - Start index
+//  - Source chromosome starting angle
+//  - Source chromosome end angle
+//  - End index
+//  - Target chromosome start angle
+//  - Target chromosome end angle
 const createParalogChords = (genomeData, paralogs, chromosomes) => {
     paralogChords = [];
     paralogs.forEach(paralog => {

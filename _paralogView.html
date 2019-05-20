@@ -136,6 +136,7 @@ const update = (genomeData, paralogsData) => {
         chordTicks = [...chordTicks, ...item];
     });
     ribbonsData = createParalogChords(genomeData, paralogsData, chordGroupData);
+    console.log(ribbonsData);
     const ribbons = ribbonsGroup.selectAll('.ribbon').data(ribbonsData);
     const arcs = arcsGroup.selectAll('.arc').data(chordGroupData);
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
@@ -319,9 +320,9 @@ const setOpacity = (elements, opacity) => {
 };
 
 
-d3.tsv(genome1)
+d3.tsv(genomeFileName)
     .then(genomeData => {
-        d3.tsv(paralogsG1)
+        d3.tsv(paralogsFileName)
             .then(paralogData => {
                 update(genomeData, paralogData);
             });

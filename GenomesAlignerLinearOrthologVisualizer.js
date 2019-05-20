@@ -1,29 +1,64 @@
-const orthologsG1 = "__orthologsG1.tsv";
-const orthologsG2 = "__orthologsG2.tsv";
-const paralogsG1 = "__paralogsG1.tsv";
-const paralogsG2 = "__paralogsG2.tsv";
-const uniqueG1 = "__uniqueG1.tsv";
-const uniqueG2 = "__uniqueG2.tsv";
-const genome1 = "__genome1.tsv";
-const genome2 = "__genome2.tsv";
+const orthologsG1 = '_orthologsG1.tsv';
+const orthologsG2 = '_orthologsG2.tsv';
+const paralogsG1 = '_paralogsG1.tsv';
+const paralogsG2 = '_paralogsG2.tsv';
+const uniqueG1 = '_uniqueG1.tsv';
+const uniqueG2 = '_uniqueG2.tsv';
+const genome1 = '_genome1.tsv';
+const genome2 = '_genome2.tsv';
 
-const option = d3.selectAll("#option");
-const form = option.append("form");
+const option = d3.selectAll('#option');
+const form = option.append('form');
 const containerSection = option.append('div').attr('class', 'container section');
 containerSection.append('h1').attr('class', 'black-text center').text('Linear visualization');
-option.append("input").attr("type", "button").attr("onClick", "history.go(0)").attr("value", "Start again!");
-option.append("input").attr("id", "LCSbutton").attr("type", "button").attr("value", "LCS");
-d3.select("#LCSbutton").on("click", showLCS);
-option.append("input").attr("id", "Multiplebutton").attr("type", "button").attr("value", "Multiple");
-d3.select("#Multiplebutton").on("click", showMultiple);
-option.append("input").attr("id", "Uniquesbutton").attr("type", "button").attr("value", "Uniques");
-d3.select("#Uniquesbutton").on("click", showUniques);
+option.append('input').attr('type', 'button').attr('onClick', 'history.go(0)').attr('value', 'Start again!');
+option.append('input').attr('id', 'LCSbutton').attr('type', 'button').attr('value', 'LCS');
+d3.select('#LCSbutton').on('click', showLCS);
+option.append('input').attr('id', 'Multiplebutton').attr('type', 'button').attr('value', 'Multiple');
+d3.select('#Multiplebutton').on('click', showMultiple);
+option.append('input').attr('id', 'Uniquesbutton').attr('type', 'button').attr('value', 'Uniques');
+d3.select('#Uniquesbutton').on('click', showUniques);
 
+// TODO?: Slider instead of text input for better user feedback
+option.append('input').attr('id', 'MinimumChromosomeLengthTextInput').attr('type', 'text').attr('placeholder', `800000`);
+option.append('input').attr('id', 'MinimumChromosomeLengthButton').attr('type', 'button').attr('value', `ChromosomeLength`);
+d3.select('#MinimumChromosomeLengthButton').on('click', chromosomeLength);
+
+option.append('div').attr('id', 'value-step');
+option.append('div').attr('id', 'slider-step');
+
+var data = [0, 0.005, 0.01, 0.015, 0.02, 0.025];
+
+// Step
+var sliderStep = d3
+    .sliderBottom()
+    .min(d3.min(data))
+    .max(d3.max(data))
+    .width(300)
+    .tickFormat(d3.format('.2%'))
+    .ticks(5)
+    .step(0.005)
+    .default(0.015)
+    .on('onchange', val => {
+        d3.select('p#value-step').text(d3.format('.2%')(val));
+    });
+
+var gStep = d3
+    .select('div#slider-step')
+    .append('svg')
+    .attr('width', 500)
+    .attr('height', 100)
+    .append('g')
+    .attr('transform', 'translate(30,30)');
+
+gStep.call(sliderStep);
+
+d3.select('p#value-step').text(d3.format('.2%')(sliderStep.value()));
 const canvasContainer = option.append('div').attr('class', 'container');
 canvasContainer.append('div').attr('class', 'canvas');
 
-minimumChromosomeLength = 800000;
 
+minimumChromosomeLength = 800000;
 const dims = {
     height: 800,
     width: 1000
@@ -35,12 +70,14 @@ let allOrthologs = {};
 let displayedOrthologs;
 let genomeData1;
 let genomeData2;
+let rawGenomeData1;
+let rawGenomeData2;
 
 const graph = d3.selectAll('.canvas')
     .append('svg')
     .attr('width', dims.width + margin.left + margin.right)
     .attr('height', dims.height + margin.top + margin.bottom)
-    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
 // group for chromosome labels
 const chromosomeLabelsG1 = graph.append('g')
@@ -72,9 +109,9 @@ const color = d3.scaleOrdinal([
     '#d9d9d9'
 ]);
 
-const kiloFormat = d3.formatPrefix(',.0', 1e3);
-const megaFormat = d3.formatPrefix(',.0', 1e6);
-const gigaFormat = d3.formatPrefix(',.0', 1e9);
+const kiloFormat = d3.formatPrefix(',.1', 1e3);
+const megaFormat = d3.formatPrefix(',.1', 1e6);
+const gigaFormat = d3.formatPrefix(',.1', 1e9);
 
 // axes groups
 const y1AxisGroup = graph.append('g')
@@ -87,20 +124,20 @@ const y2AxisGroup = graph.append('g')
 // brush (selection)
 const brush1 = d3.brushY()
     .extent([[0, 0], [dims.width / 2, dims.height]])
-    .on("end", brushended1);
+    .on('end', brushended1);
 const brush2 = d3.brushY()
     .extent([[dims.width / 2, 0], [dims.width, dims.height]])
-    .on("end", brushended2);
+    .on('end', brushended2);
 var idleTimeout;
 const idleDelay = 350;
 
-graph.append("g")
-    .attr("class", "brush1")
+graph.append('g')
+    .attr('class', 'brush1')
     .attr('transform', `translate(${margin.left}, 0)`)
     .call(brush1);
 
-graph.append("g")
-    .attr("class", "brush2")
+graph.append('g')
+    .attr('class', 'brush2')
     .call(brush2);
 
 function brushended1() {
@@ -110,7 +147,7 @@ function brushended1() {
         y1.domain([0, maxG1]);
     } else {
         y1.domain([s[0], s[1]].map(y1.invert, y1));
-        graph.select(".brush1").call(brush1.move, null);
+        graph.select('.brush1').call(brush1.move, null);
     }
     zoom1();
 }
@@ -122,7 +159,7 @@ function brushended2() {
         y2.domain([0, maxG2]);
     } else {
         y2.domain([s[0], s[1]].map(y2.invert, y2));
-        graph.select(".brush2").call(brush2.move, null);
+        graph.select('.brush2').call(brush2.move, null);
     }
     zoom2();
 }
@@ -134,9 +171,9 @@ function idled() {
 function zoom1() {
     var t = graph.transition().duration(750);
     if (y1.domain()[0] === 0 && y1.domain()[1] === maxG1) {
-        restartTicks(t);
+        restartTicksG1(t, false);
     } else {
-        restartTicks(t);
+        restartTicksG1(t, true);
         newTicks = [];
         let i;
         let newTickValue;
@@ -150,12 +187,12 @@ function zoom1() {
         }
         y1Axis.tickValues([...y1Axis.tickValues(), ...newTicks]).tickFormat((d, i) => {
             realTickValue = d - lengthsG1[topPinnedLabelG1(d)];
-            return formatConstraint > 1000000000 ? gigaFormat(realTickValue) : formatConstraint > 1000000 ? megaFormat(realTickValue) : formatConstraint > 1000 ? kiloFormat(realTickValue) : d3.format(",")(realTickValue);
+            return formatConstraint > 1000000000 ? gigaFormat(realTickValue) : formatConstraint > 1000000 ? megaFormat(realTickValue) : formatConstraint > 1000 ? kiloFormat(realTickValue) : d3.format(',')(realTickValue);
         });
     }
     y1AxisGroup.transition(t).call(y1Axis);
-    graph.selectAll("line.orthologLine").transition(t)
-        .attr("y1", d => {
+    graph.selectAll('line.orthologLine').transition(t)
+        .attr('y1', d => {
             return y1(d.geneStart)
         })
         .attr('opacity', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] || d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 0.0 : 1.0);
@@ -166,17 +203,18 @@ function zoom1() {
         .attr('transform', d => `translate(${margin.left - 40}, 
         ${d.Name === topPinnedLabel ?
                 y1.range()[0] + margin.top :
-                d.Name === bottomPinnedLabel && y1(d.Length / 2 + lengthsG1[d.Name]) > y1.range()[1] ?
-                    y1.range()[1] :
-                    y1(d.Length / 2 + lengthsG1[d.Name]) + 10})`);
+                d.Name === bottomPinnedLabel ?
+                    y1(lengthsG1[d.Name] + 1) + 10 :
+                    y1(d.Length / 2 + lengthsG1[d.Name]) + 10})`
+        );
 }
 
 function zoom2() {
     var t = graph.transition().duration(750);
     if (y2.domain()[0] === 0 && y2.domain()[1] === maxG2) {
-        restartTicks(t);
+        restartTicksG2(t, false);
     } else {
-        restartTicks(t);
+        restartTicksG2(t, true);
         newTicks = [];
         let i;
         let newTickValue;
@@ -190,12 +228,12 @@ function zoom2() {
         }
         y2Axis.tickValues([...y2Axis.tickValues(), ...newTicks]).tickFormat((d, i) => {
             realTickValue = d - lengthsG2[topPinnedLabelG2(d)];
-            return formatConstraint > 1000000000 ? gigaFormat(realTickValue) : formatConstraint > 1000000 ? megaFormat(realTickValue) : formatConstraint > 1000 ? kiloFormat(realTickValue) : d3.format(",")(realTickValue);
+            return formatConstraint > 1000000000 ? gigaFormat(realTickValue) : formatConstraint > 1000000 ? megaFormat(realTickValue) : formatConstraint > 1000 ? kiloFormat(realTickValue) : d3.format(',')(realTickValue);
         });
     }
     y2AxisGroup.transition(t).call(y2Axis);
-    graph.selectAll("line.orthologLine").transition(t)
-        .attr("y2", d => {
+    graph.selectAll('line.orthologLine').transition(t)
+        .attr('y2', d => {
             return y2(d.geneStartG2)
         })
         .attr('opacity', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] || d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 0.0 : 1.0);
@@ -206,8 +244,8 @@ function zoom2() {
         .attr('transform', d => `translate(${dims.width + margin.right}, 
             ${d.Name === topPinnedLabel ?
                 y2.range()[0] + margin.top :
-                d.Name === bottomPinnedLabel && y2(d.Length / 2 + lengthsG2[d.Name]) > y2.range()[1] ?
-                    y2.range()[1] :
+                d.Name === bottomPinnedLabel ?
+                    y2(lengthsG2[d.Name] + 1) + 10 :
                     y2(d.Length / 2 + lengthsG2[d.Name]) + 10})`);
 }
 
@@ -229,6 +267,9 @@ const bottomPinnedLabelG1 = value => {
             pinnedLabel = invertedChromosome
         }
     });
+    if (y1.domain()[0] === 0 && y1.domain()[1] === maxG1) {
+        return;
+    }
     return pinnedLabel;
 }
 
@@ -249,6 +290,9 @@ const bottomPinnedLabelG2 = value => {
             pinnedLabel = invertedChromosome
         }
     });
+    if (y2.domain()[0] === 0 && y2.domain()[1] === maxG2) {
+        return;
+    }
     return pinnedLabel;
 }
 
@@ -260,27 +304,38 @@ const y1Axis = d3.axisLeft(y1)
 const y2Axis = d3.axisRight(y2)
     .ticks(4);
 
-let maxG1 = 0;
-let maxG2 = 0;
-let lengthsG1 = {};
-let lengthsG2 = {};
-let ticksG1 = [];
-let ticksG2 = [];
+let maxG1;
+let maxG2;
+let lengthsG1;
+let lengthsG2;
+let ticksG1;
+let ticksG2;
 const prepareData = () => {
     // Filter chromosomes/scaffolds
-    genomeData1 = genomeData1.filter(chromosome => {
+    genomeData1 = rawGenomeData1.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-    genomeData2 = genomeData2.filter(chromosome => {
+    genomeData2 = rawGenomeData2.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
+    console.log(genomeData1);
     // Get the max and relative lengths for axes and ticks
+    maxG1 = 0;
+    lengthsG1 = {};
+    ticksG1 = [];
     genomeData1.forEach(g => {
+        ticksG1.push(maxG1 + 1);
         lengthsG1[g.Name] = maxG1;
         maxG1 += parseInt(g.Length);
         ticksG1.push(maxG1);
     });
+    console.log(lengthsG1);
+    console.log(ticksG1);
+    maxG2 = 0;
+    lengthsG2 = {};
+    ticksG2 = [];
     genomeData2.forEach(g => {
+        ticksG2.push(maxG2 + 1);
         lengthsG2[g.Name] = maxG2;
         maxG2 += parseInt(g.Length);
         ticksG2.push(maxG2);
@@ -292,10 +347,12 @@ const prepareData = () => {
     color.domain(genomeData1.map(chromosome => chromosome.Name));
 
     // Call axes, create ticks
-    restartTicks();
+    restartTicksG1(null, false);
+    restartTicksG2(null, false);
 
     // Chromosome labels
     const labelsG1 = chromosomeLabelsG1.selectAll('text').data(genomeData1);
+    labelsG1.exit().remove();
     labelsG1.enter()
         .append('text')
         .attr('class', 'chromosomeLabelG1')
@@ -304,6 +361,7 @@ const prepareData = () => {
         .attr('text-anchor', 'end')
         .attr('fill', d => color(d.Name));
     const labelsG2 = chromosomeLabelsG2.selectAll('text').data(genomeData2);
+    labelsG2.exit().remove();
     labelsG2.enter()
         .append('text')
         .attr('class', 'chromosomeLabelG2')
@@ -313,16 +371,19 @@ const prepareData = () => {
         .attr('fill', d => color(d.Name));
 }
 
-const restartTicks = (t) => {
+const restartTicksG1 = (t, zoomed = false) => {
     y1Axis.tickValues(ticksG1).tickFormat((d, i) => {
         realTickValue = d - lengthsG1[topPinnedLabelG1(d)];
-        return realTickValue > 1000000000 ? gigaFormat(realTickValue) : realTickValue > 1000000 ? megaFormat(realTickValue) : kiloFormat(realTickValue);
-    });
-    y2Axis.tickValues(ticksG2).tickFormat((d, i) => {
-        realTickValue = d - lengthsG2[topPinnedLabelG2(d)];
-        return realTickValue > 1000000000 ? gigaFormat(realTickValue) : realTickValue > 1000000 ? megaFormat(realTickValue) : kiloFormat(realTickValue);
+        return realTickValue > 1000000000 ? gigaFormat(realTickValue) : realTickValue > 1000000 ? megaFormat(realTickValue) : realTickValue > 1000 ? kiloFormat(realTickValue) : realTickValue != 1 ? realTickValue : zoomed ? realTickValue : null;
     });
     y1AxisGroup.transition(t).call(y1Axis);
+}
+
+const restartTicksG2 = (t, zoomed = false) => {
+    y2Axis.tickValues(ticksG2).tickFormat((d, i) => {
+        realTickValue = d - lengthsG2[topPinnedLabelG2(d)];
+        return realTickValue > 1000000000 ? gigaFormat(realTickValue) : realTickValue > 1000000 ? megaFormat(realTickValue) : realTickValue > 1000 ? kiloFormat(realTickValue) : realTickValue != 1 ? realTickValue : zoomed ? realTickValue : null;
+    });
     y2AxisGroup.transition(t).call(y2Axis);
 }
 
@@ -367,8 +428,8 @@ const paintData = orthologs => {
         .attr('y2', d => y2(d.geneStartG2))
         .style('stroke', d => color(d.chromosome));
 
-    graph.selectAll("line.orthologLine")
-        .attr("y1", d => {
+    graph.selectAll('line.orthologLine')
+        .attr('y1', d => {
             return y1(d.geneStart)
         })
         .attr('opacity', d => d.geneStart > y1.domain()[1] || d.geneStart < y1.domain()[0] || d.geneStartG2 > y2.domain()[1] || d.geneStartG2 < y2.domain()[0] ? 0.0 : 1.0);
@@ -414,17 +475,35 @@ const chromosomesDisplayed = (genomeData1, genomeData2, ortholog) => {
 // Show LCS
 function showLCS() {
     paintData(allOrthologs.lcs);
+    document.getElementById('LCSbutton').disabled = true;
+    document.getElementById('Multiplebutton').disabled = false;
+    document.getElementById('Uniquesbutton').disabled = false;
 }
 
 // Show multiples
 function showMultiple() {
     paintData(allOrthologs.multiple);
-
+    document.getElementById('LCSbutton').disabled = false;
+    document.getElementById('Multiplebutton').disabled = true;
+    document.getElementById('Uniquesbutton').disabled = false;
 }
 
 // Show uniques
 function showUniques() {
     paintData(allOrthologs.unique);
+    document.getElementById('LCSbutton').disabled = false;
+    document.getElementById('Multiplebutton').disabled = false;
+    document.getElementById('Uniquesbutton').disabled = true;
+}
+
+// Filter chromosomes
+function chromosomeLength() {
+    const newMinimum = d3.select('#MinimumChromosomeLengthTextInput').property('value');
+    if (newMinimum != '') {
+        minimumChromosomeLength = parseInt(newMinimum);
+        prepareData();
+    }
+    console.log(minimumChromosomeLength);
 }
 
 // Split data
@@ -446,10 +525,10 @@ const divideOrthologs = orthologs => {
 // Read data
 d3.tsv(genome1)
     .then(genomeData1r => {
-        genomeData1 = genomeData1r;
+        rawGenomeData1 = genomeData1r;
         d3.tsv(genome2)
             .then(genomeData2r => {
-                genomeData2 = genomeData2r;
+                rawGenomeData2 = genomeData2r;
                 d3.tsv(orthologsG1)
                     .then(orthologs => {
                         displayedOrthologs = { ...allOrthologs };
@@ -459,5 +538,3 @@ d3.tsv(genome1)
                     });
             });
     });
-
-
