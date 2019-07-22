@@ -38,7 +38,6 @@ const dims = {
 const margin = { left: 80, right: 20, top: 20, bottom: 20 };
 
 let allOrthologs = {};
-let displayedOrthologs;
 let genomeData1;
 let genomeData2;
 let rawGenomeData1;
@@ -502,7 +501,6 @@ d3.tsv(genome1)
                 rawGenomeData2 = genomeData2r;
                 d3.tsv(orthologsG1)
                     .then(orthologs => {
-                        displayedOrthologs = { ...allOrthologs };
                         prepareData();
                         allOrthologs = divideOrthologs(orthologs);
                         // paintData(allOrthologs);

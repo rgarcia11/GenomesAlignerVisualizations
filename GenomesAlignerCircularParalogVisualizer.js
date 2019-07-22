@@ -28,7 +28,7 @@ const dims = {
     focusOpacity: 0.9
 };
 
-const minimumChromosomeLength = 500000;
+const minimumChromosomeLength = 5000000;
 
 const cent = {
     x: (dims.width / 2 + 5),
