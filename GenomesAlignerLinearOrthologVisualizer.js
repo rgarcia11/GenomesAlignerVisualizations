@@ -501,6 +501,9 @@ d3.tsv(genome1)
                 rawGenomeData2 = genomeData2r;
                 d3.tsv(orthologsG1)
                     .then(orthologs => {
+                        console.log(rawGenomeData1);
+                        console.log(rawGenomeData2);
+                        console.log(orthologs);
                         prepareData();
                         allOrthologs = divideOrthologs(orthologs);
                         // paintData(allOrthologs);
