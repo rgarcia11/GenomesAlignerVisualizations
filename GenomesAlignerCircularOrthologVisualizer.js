@@ -1,12 +1,3 @@
-const orthologsG1 = "_orthologsG1.tsv";
-const orthologsG2 = "_orthologsG2.tsv";
-const paralogsG1 = "_paralogsG1.tsv";
-const paralogsG2 = "_paralogsG2.tsv";
-const uniqueG1 = "_uniqueG1.tsv";
-const uniqueG2 = "_uniqueG2.tsv";
-const genome1 = "_genome1.tsv";
-const genome2 = "_genome2.tsv";
-
 const option = d3.selectAll("#option");
 const containerSection = option.append('div').attr('class', 'container section');
 containerSection.append('h5').attr('class', 'black-text center').text('Chord visualization');
@@ -28,7 +19,7 @@ const dims = {
     focusOpacity: 0.9
 };
 
-const minimumChromosomeLength = 500000;
+const minimumChromosomeLength = 50000;
 
 const cent = {
     x: (dims.width / 2 + 5),
@@ -88,7 +79,7 @@ const update = (genomeData1, genomeData2, paralogsData1, paralogsData2, ortholog
         return chromosome.Length > minimumChromosomeLength;
     });
     genomeData = [...genomeData1, ...genomeData2];
-    
+
     const chordGroupData = pie(genomeData);
     let chordTicks = [];
     chordGroupData.map(item => createTicks(item, dims.ticksSpacing)).forEach(item => {
@@ -96,15 +87,9 @@ const update = (genomeData1, genomeData2, paralogsData1, paralogsData2, ortholog
     });
     paralogsData = [...paralogsData1, ...paralogsData2];
     orthologsData = [...orthologsData1, ...orthologsData2];
-    console.log(paralogsData);
-    console.log(orthologsData);
-
     ribbonsParalogsData = createParalogChords(genomeData, paralogsData, chordGroupData);
-    console.log(ribbonsParalogsData);
     ribbonsOrthologsData = createOrthologChords(genomeData, orthologsData, chordGroupData);
-    console.log(ribbonsOrthologsData);
     ribbonsData = [...ribbonsParalogsData, ...ribbonsOrthologsData];
-    console.log(ribbonsData);
     const ribbons = ribbonsGroup.selectAll('.ribbon').data(ribbonsData);
     const arcs = arcsGroup.selectAll('.arc').data(chordGroupData);
     const axis = circularAxisGroup.selectAll('g').data(chordTicks);
@@ -318,22 +303,5 @@ const setOpacity = (elements, opacity) => {
 };
 
 
-d3.tsv(genome1)
-    .then(genomeData1 => {
-        d3.tsv(genome2)
-            .then(genomeData2 => {
-                d3.tsv(paralogsG1)
-                    .then(paralogData1 => {
-                        d3.tsv(paralogsG2)
-                            .then(paralogData2 => {
-                                d3.tsv(orthologsG1)
-                                    .then(orthologsData1 => {
-                                        d3.tsv(orthologsG2)
-                                            .then(orthologsData2 => {
-                                                update(genomeData1, genomeData2, paralogData1, paralogData2, orthologsData1, orthologsData2);
-                                            })
-                                    })
-                            })
-                    });
-            })
-    });
+
+update(genome1, genome2, paralogsG1, paralogsG2, orthologsG1, orthologsG2);

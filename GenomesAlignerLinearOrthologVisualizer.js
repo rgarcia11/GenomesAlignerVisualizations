@@ -1,12 +1,3 @@
-const orthologsG1 = '_orthologsG1.tsv';
-const orthologsG2 = '_orthologsG2.tsv';
-const paralogsG1 = '_paralogsG1.tsv';
-const paralogsG2 = '_paralogsG2.tsv';
-const uniqueG1 = '_uniqueG1.tsv';
-const uniqueG2 = '_uniqueG2.tsv';
-const genome1 = '_genome1.tsv';
-const genome2 = '_genome2.tsv';
-
 const option = d3.selectAll('#option');
 const form = option.append('form');
 const containerSection = option.append('div').attr('class', 'container section');
@@ -38,10 +29,6 @@ const dims = {
 const margin = { left: 80, right: 20, top: 20, bottom: 20 };
 
 let allOrthologs = {};
-let genomeData1;
-let genomeData2;
-let rawGenomeData1;
-let rawGenomeData2;
 
 const graph = d3.selectAll('.canvas')
     .append('svg')
@@ -282,13 +269,13 @@ let ticksG1;
 let ticksG2;
 const prepareData = () => {
     // Filter chromosomes/scaffolds
-    genomeData1 = rawGenomeData1.filter(chromosome => {
+    genomeData1 = genome1.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-    genomeData2 = rawGenomeData2.filter(chromosome => {
+    genomeData2 = genome2.filter(chromosome => {
         return chromosome.Length > minimumChromosomeLength;
     });
-    console.log(genomeData1);
+    
     // Get the max and relative lengths for axes and ticks
     maxG1 = 0;
     lengthsG1 = {};
@@ -299,8 +286,7 @@ const prepareData = () => {
         maxG1 += parseInt(g.Length);
         ticksG1.push(maxG1);
     });
-    console.log(lengthsG1);
-    console.log(ticksG1);
+    
     maxG2 = 0;
     lengthsG2 = {};
     ticksG2 = [];
@@ -473,7 +459,6 @@ function chromosomeLength() {
         minimumChromosomeLength = parseInt(newMinimum);
         prepareData();
     }
-    console.log(minimumChromosomeLength);
 }
 
 // Split data
@@ -493,20 +478,5 @@ const divideOrthologs = orthologs => {
 }
 
 // Read data
-d3.tsv(genome1)
-    .then(genomeData1r => {
-        rawGenomeData1 = genomeData1r;
-        d3.tsv(genome2)
-            .then(genomeData2r => {
-                rawGenomeData2 = genomeData2r;
-                d3.tsv(orthologsG1)
-                    .then(orthologs => {
-                        console.log(rawGenomeData1);
-                        console.log(rawGenomeData2);
-                        console.log(orthologs);
-                        prepareData();
-                        allOrthologs = divideOrthologs(orthologs);
-                        // paintData(allOrthologs);
-                    });
-            });
-    });
+prepareData();
+allOrthologs = divideOrthologs(orthologsG1);
